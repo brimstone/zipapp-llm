@@ -1,0 +1,30 @@
+#!/bin/bash
+# Set debug mode and enable xtrace, error on unset variables, and pipefail
+set -xueo pipefail
+
+# Export an environment variable to skip Cython compilation
+export SKIP_CYTHON=1
+
+# Remove existing virtual environment, zip directory, and llm.pyz file
+rm -rf venv zip llm.pyz
+
+# Create a new virtual environment using Python 3
+python3 -m venv venv
+
+# Activate the virtual environment
+. venv/bin/activate
+
+# Install pydantic version less than 2 and 'llm' package in the zip directory
+pip install --no-binary pydantic 'pydantic<2' --target zip llm llm-ollama
+
+# Remove any cache, shared library, or DLL files from the zip directory
+find zip \( -iname '__pycache__' -o -name '*.so' -o -name '*.dll' \) -prune -exec rm -rf {} \;
+
+# Remove the bin directory from the zip package
+rm -rf zip/bin
+
+# Create a ZIP application from the zip directory and output it as llm.pyz
+python3 -m zipapp zip -o llm.pyz -p '/usr/bin/env python3' -m 'llm.cli:cli' -c
+
+# List the contents of the llm.pyz file in human-readable format
+ls -lh llm.pyz
